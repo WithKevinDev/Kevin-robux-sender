@@ -20,7 +20,31 @@
 // ==/UserScript==
 
 (() => {
+
   "use strict";
+
+  // Visible launcher so the panel can always be opened without the Tampermonkey menu.
+  GM_addStyle(`
+    #kcg-launcher {
+      position: fixed !important; right: 18px !important; bottom: 18px !important;
+      z-index: 2147483647 !important; display: flex !important; align-items: center !important;
+      gap: 9px !important; padding: 12px 16px !important; border-radius: 999px !important;
+      border: 1px solid rgba(255,92,120,.9) !important;
+      background: linear-gradient(135deg,#ff3155,#9f1239) !important;
+      color: #fff !important; font: 800 12px/1.1 system-ui,sans-serif !important;
+      letter-spacing: .09em !important; cursor: pointer !important;
+      box-shadow: 0 8px 28px rgba(225,20,60,.38), inset 0 1px rgba(255,255,255,.2) !important;
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease !important;
+    }
+    #kcg-launcher:hover { transform: translateY(-3px) !important; filter: brightness(1.12) !important; }
+    #kcg-launcher:active { transform: scale(.97) !important; }
+    #kcg-launcher .kcg-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #fff;
+      box-shadow: 0 0 10px rgba(255,255,255,.85); display: inline-block;
+    }
+    #rpkp-root { z-index: 2147483646 !important; }
+  `);
+
 
   const DEFAULTS = { fakeRobux: 1000000, fakeEnabled: true, giftEnabled: true, deductOnGift: true, fakeOwned: {}, comboDiscountEnabled: true, comboDiscount: 3000 };
   const MAX = 2147483647;
@@ -271,8 +295,6 @@ html.rpk-owned-page #item-details-container .item-purchase-btns-container > *:no
 #rpkp-amount:focus { border-color:#e5263f; box-shadow:0 0 0 3px rgba(229,38,63,.28); }
 .rpkp-set { position:absolute; right:5px; top:4px; height:30px; padding:0 14px; border:0; border-radius:7px; cursor:pointer; background:#e5263f; color:#fff; font:700 12px "Segoe UI",system-ui,sans-serif; letter-spacing:.05em; }
 .rpkp-set:hover { filter:brightness(1.14); }
-.rpkp-chips { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:9px; }
-.rpkp-chip { height:28px; border-radius:8px; cursor:pointer; border:1px solid #5b1826; background:#35101a; color:#fff1f2; font:600 11.5px "Segoe UI",system-ui,sans-serif; }
 .rpkp-chip:hover { border-color:#9f2438; background:#48121f; }
 .rpkp-chip.minus { color:#85858c; }
 .rpkp-chip.minus:hover { border-color:#e5263f; color:#e5263f; background:#35101a; }
@@ -1256,16 +1278,6 @@ label.rpkp-row:hover { background:#35101a; }
       <div class="rpkp-label">Fake Robux balance</div>
       <div class="rpkp-amount"><div class="rpkp-hex"></div><div class="rpkp-big" id="rpkp-big">0</div></div>
       <div class="rpkp-input-wrap"><input id="rpkp-amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Enter amount…"><button class="rpkp-set" id="rpkp-set">SET</button></div>
-      <div class="rpkp-chips">
-        <button class="rpkp-chip" data-add="1000">+1K</button>
-        <button class="rpkp-chip" data-add="10000">+10K</button>
-        <button class="rpkp-chip" data-add="100000">+100K</button>
-        <button class="rpkp-chip" data-add="1000000">+1M</button>
-        <button class="rpkp-chip" data-add="10000000">+10M</button>
-        <button class="rpkp-chip" data-set="1000000000">1B</button>
-        <button class="rpkp-chip" data-set="2147483647">MAX</button>
-        <button class="rpkp-chip minus" data-set="0">CLEAR</button>
-      </div>
     </div>
     <div class="rpkp-label">Features</div>
     <div class="rpkp-group">
@@ -1274,12 +1286,6 @@ label.rpkp-row:hover { background:#35101a; }
       <label class="rpkp-row"><div class="rpkp-t"><b>Deduct on gift</b><small>Gifting lowers your fake balance</small></div><span class="rpkp-switch"><input type="checkbox" id="rpkp-deduct"><span class="rpkp-track"></span></span></label>
     </div>
     <div class="rpkp-group">
-      <div class="rpkp-row">
-        <div class="rpkp-t"><b>Bundle discount</b><small>Headless + Korblox combo</small></div>
-        <div class="rpkp-disc" id="rpkp-discWrap"><span>◉</span><input id="rpkp-discountAmount" type="text" inputmode="numeric" autocomplete="off"></div>
-        <span class="rpkp-switch"><input type="checkbox" id="rpkp-comboDiscount"><span class="rpkp-track"></span></span>
-      </div>
-    </div>
     <button class="rpkp-reset" id="rpkp-resetOwned">Reset owned items</button>
     <div class="rpkp-foot" id="rpkp-ver"></div>
   </div>
@@ -1298,31 +1304,46 @@ label.rpkp-row:hover { background:#35101a; }
     if (!document.getElementById("rpkp-root")) return;
     const g = (id) => document.getElementById(id);
     g("rpkp-big").textContent = settings.fakeRobux.toLocaleString("en-US");
-    g("rpkp-navPreview").textContent = formatShort(settings.fakeRobux);
     g("rpkp-enabled").checked = settings.fakeEnabled;
     g("rpkp-gift").checked = settings.giftEnabled;
     g("rpkp-deduct").checked = settings.deductOnGift;
-    g("rpkp-comboDiscount").checked = settings.comboDiscountEnabled;
-    const da = g("rpkp-discountAmount");
-    if (document.activeElement !== da) da.value = settings.comboDiscount;
-    da.disabled = !settings.comboDiscountEnabled;
-    g("rpkp-discWrap").classList.toggle("off", !settings.comboDiscountEnabled);
   }
 
   function togglePanel() {
     const r = document.getElementById("rpkp-root");
-    if (!r) return;
-    r.hidden = !r.hidden;
-    if (!r.hidden) refreshPanel();
+    if (!r) { buildPanel(); }
+    const panel = document.getElementById("rpkp-root");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) refreshPanel();
   }
 
   let panelBuilt = false;
   function buildPanel() {
     if (panelBuilt || !document.body) return;
+    if (document.getElementById("rpkp-root")) { panelBuilt = true; return; }
     panelBuilt = true;
     const frag = document.createElement("div");
     frag.innerHTML = PANEL_HTML;
     while (frag.firstChild) document.body.appendChild(frag.firstChild);
+
+    // Always-visible launcher; click it to show/hide the panel.
+    if (!document.getElementById("kcg-launcher")) {
+      const launcher = document.createElement("button");
+      launcher.id = "kcg-launcher";
+      launcher.type = "button";
+      launcher.innerHTML = '<span class="kcg-dot"></span> KEVIN GIFTER';
+      launcher.title = "Open Kevin Catalogue Gifter";
+      launcher.addEventListener("click", () => {
+        const panel = document.getElementById("rpkp-root");
+        if (panel) {
+          panel.hidden = !panel.hidden;
+          if (!panel.hidden) refreshPanel();
+        }
+      });
+      document.body.appendChild(launcher);
+    }
+
 
     const g = (id) => document.getElementById(id);
     g("rpkp-close").addEventListener("click", () => (g("rpkp-root").hidden = true));
@@ -1362,26 +1383,9 @@ label.rpkp-row:hover { background:#35101a; }
     });
     g("rpkp-amount").addEventListener("keydown", (e) => e.key === "Enter" && g("rpkp-set").click());
 
-    for (const chip of document.querySelectorAll(".rpkp-chip")) {
-      chip.addEventListener("click", () => {
-        if (chip.dataset.add) setVals({ fakeRobux: clamp(settings.fakeRobux + Number(chip.dataset.add)) });
-        else setVals({ fakeRobux: clamp(Number(chip.dataset.set)) });
-      });
-    }
-
     g("rpkp-enabled").addEventListener("change", (e) => setVals({ fakeEnabled: e.target.checked }));
     g("rpkp-gift").addEventListener("change", (e) => setVals({ giftEnabled: e.target.checked }));
     g("rpkp-deduct").addEventListener("change", (e) => setVals({ deductOnGift: e.target.checked }));
-    g("rpkp-comboDiscount").closest(".rpkp-row").addEventListener("click", (e) => {
-      if (e.target.closest(".rpkp-disc")) return;
-      const cb = g("rpkp-comboDiscount");
-      cb.checked = !cb.checked;
-      setVals({ comboDiscountEnabled: cb.checked });
-    });
-
-    const saveDiscount = () => setVals({ comboDiscount: clamp(g("rpkp-discountAmount").value) });
-    g("rpkp-discountAmount").addEventListener("change", saveDiscount);
-    g("rpkp-discountAmount").addEventListener("keydown", (e) => e.key === "Enter" && saveDiscount());
 
     g("rpkp-resetOwned").addEventListener("click", () => {
       GM_setValue("fakeOwned", {});
@@ -1393,7 +1397,7 @@ label.rpkp-row:hover { background:#35101a; }
       setTimeout(() => { b.textContent = "Reset owned items"; b.classList.remove("done"); }, 1500);
     });
 
-    try { g("rpkp-ver").textContent = "v" + GM_info.script.version; } catch (_) {}
+    g("rpkp-ver").textContent = "discord.gg/luascript";
 
     refreshPanel();
   }
@@ -1431,3 +1435,63 @@ label.rpkp-row:hover { background:#35101a; }
 
   setInterval(tick, 1500);
 })();
+
+/* Custom theme CSS appended for future maintenance:
+
+/* Kevin Catalogue Gifter — custom crimson motion theme */
+.rpkp-root {
+  background: radial-gradient(ellipse at 8% 0%, rgba(239, 35, 68, .20), transparent 38%),
+              linear-gradient(155deg, #21070e 0%, #10050a 58%, #1a0610 100%) !important;
+  border: 1px solid rgba(255, 66, 101, .8) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.55), 0 0 0 1px rgba(255,55,90,.12),
+              0 0 35px rgba(230,25,65,.14) !important;
+  animation: kcg-panel-in .42s cubic-bezier(.2,.85,.25,1.15);
+  transform-origin: top right;
+}
+@keyframes kcg-panel-in {
+  from { opacity: 0; transform: translateY(14px) scale(.965); filter: blur(5px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes kcg-glow {
+  0%,100% { box-shadow: 0 0 0 rgba(255,45,83,0); }
+  50% { box-shadow: 0 0 18px rgba(255,45,83,.2); }
+}
+.rpkp-head {
+  background: linear-gradient(105deg, rgba(239,35,68,.23), rgba(44,8,18,.28) 60%, transparent) !important;
+  border-bottom-color: rgba(255,66,101,.34) !important;
+}
+.rpkp-brand { letter-spacing: .105em !important; text-shadow: 0 0 18px rgba(255,55,90,.24); }
+.rpkp-card, .rpkp-group {
+  background: linear-gradient(145deg, rgba(67,13,29,.84), rgba(27,7,14,.96)) !important;
+  border-color: rgba(255,66,101,.34) !important;
+  transition: border-color .22s ease, transform .22s ease, box-shadow .22s ease;
+}
+.rpkp-card:hover, .rpkp-group:hover {
+  border-color: rgba(255,90,120,.75) !important;
+  box-shadow: 0 8px 26px rgba(190,20,55,.12);
+}
+.rpkp-root button {
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease !important;
+}
+.rpkp-root button:hover { filter: brightness(1.14); transform: translateY(-1px); }
+.rpkp-root button:active { transform: translateY(1px) scale(.985); }
+.rpkp-root input {
+  background: rgba(12,4,8,.82) !important;
+  border-color: rgba(255,66,101,.32) !important;
+  transition: border-color .2s ease, box-shadow .2s ease !important;
+}
+.rpkp-root input:focus {
+  border-color: #ff496a !important;
+  box-shadow: 0 0 0 3px rgba(255,55,90,.12), 0 0 22px rgba(255,55,90,.08) !important;
+  outline: none !important;
+}
+.rpkp-root .rpkp-toggle, .rpkp-root [role="switch"] {
+  transition: background .2s ease, box-shadow .2s ease !important;
+}
+.rpkp-root .rpkp-footer, .rpkp-root .rpkp-version {
+  color: #ff9bab !important;
+  letter-spacing: .12em;
+  font-size: 10px !important;
+}
+
+*/
